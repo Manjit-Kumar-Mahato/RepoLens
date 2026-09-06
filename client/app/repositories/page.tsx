@@ -2,14 +2,14 @@
 
 import { RequireAuth } from "@/components/providers/require-auth";
 import { AppShell } from "@/components/layout/app-shell";
-import { OverviewDashboard } from "@/components/dashboard/overview-dashboard";
+import { OverviewRepository } from "@/components/repositories/overview-repository";
 
-export default function DashboardPage() {
+export default function RepositoryPage() {
   return (
     <RequireAuth>
       <AppShell hideHeader>
         <main className="min-h-svh p-6">
-          <OverviewDashboard />
+          <OverviewRepository />
         </main>
       </AppShell>
     </RequireAuth>
