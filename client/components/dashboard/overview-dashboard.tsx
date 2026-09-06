@@ -15,6 +15,7 @@ import {
 
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useRepos } from "@/hooks/use-repos";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 export function OverviewDashboard() {
   const { data: user } = useCurrentUser();
@@ -67,13 +68,17 @@ export function OverviewDashboard() {
             </p>
           </div>
 
-          <Link
-            href="/repositories"
-            className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            <FolderGit2 className="size-4" />
-            View repositories
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/repositories"
+              className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              <FolderGit2 className="size-4" />
+              Get repositories
+            </Link>
+
+            <ModeToggle />
+          </div>
         </div>
       </section>
 

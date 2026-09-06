@@ -9,6 +9,8 @@ import {
   useStartIndexing,
 } from "@/hooks/use-repos";
 
+import { ModeToggle } from "@/components/ui/mode-toggle";
+
 import { RepoCard } from "./repo-card";
 import { RepositoryHeader } from "./repository-header";
 import { RepositoryErrorAlert } from "./repository-error-alert";
@@ -139,24 +141,28 @@ export function OverviewRepository() {
         title="Repositories"
         description={`${totalRepos} connected · ${indexedRepos} ready`}
         action={
-          <button
-            type="button"
-            disabled={refreshRepos.isPending}
-            onClick={() => refreshRepos.mutate()}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${
-                refreshRepos.isPending
-                  ? "animate-spin"
-                  : ""
-              }`}
-            />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={refreshRepos.isPending}
+              onClick={() => refreshRepos.mutate()}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  refreshRepos.isPending
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
 
-            {refreshRepos.isPending
-              ? "Syncing..."
-              : "Sync"}
-          </button>
+              {refreshRepos.isPending
+                ? "Syncing..."
+                : "Sync"}
+            </button>
+
+            <ModeToggle />
+          </div>
         }
       />
 
