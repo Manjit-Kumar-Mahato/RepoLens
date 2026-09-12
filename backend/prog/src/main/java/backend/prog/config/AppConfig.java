@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestClient;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
+
 @Configuration
 @EnableAsync
 public class AppConfig {
@@ -16,6 +18,12 @@ public class AppConfig {
     RestClient.Builder restClientBuilder() {
         return RestClient.builder();
     }
+
+    @Bean
+    JsonMapper jsonMapper() {
+        return JsonMapper.builder().build();
+    }
+
 
     @Bean(name = "indexingExecutor")
     Executor indexingExecutor() {

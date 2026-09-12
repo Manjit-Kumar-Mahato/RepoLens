@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import {
   ExternalLink,
   GitBranch,
   Lock,
+  MessageSquare,
   Sparkles,
   Unlock,
 } from "lucide-react";
@@ -103,7 +105,6 @@ export function RepoCard({
 
   return (
     <div className="group flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-card hover:shadow-lg">
-      {/* Card Header */}
       <div className="flex items-start justify-between gap-3 p-5 pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
@@ -144,13 +145,11 @@ export function RepoCard({
         </RepositoryBadge>
       </div>
 
-      {/* Description */}
       <div className="flex-1 px-5">
         <p className="line-clamp-3 min-h-[60px] text-sm leading-6 text-muted-foreground">
           {repo.description || "No description provided."}
         </p>
 
-        {/* Metadata */}
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">
             {repo.isPrivate ? (
@@ -177,13 +176,11 @@ export function RepoCard({
           )}
         </div>
 
-        {/* Status */}
         <div className="mt-5">
           <RepoStatus repo={repo} />
         </div>
       </div>
 
-      {/* Footer */}
       <div className="mt-5 flex items-center justify-between border-t border-border/60 px-5 py-4">
         {repo.htmlUrl ? (
           <a
@@ -199,21 +196,41 @@ export function RepoCard({
           <span />
         )}
 
-        {onIndex && (
-          <button
-            type="button"
-            disabled={indexing || isIndexing}
-            onClick={() => onIndex(repo.id)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
+        {isReady ? (
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/chat/${repo.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-semibold transition hover:bg-muted"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Chat
+            </Link>
 
-            {indexing
-              ? "Starting..."
-              : isIndexing
-                ? "Indexing..."
-                : "Index"}
-          </button>
+            <Link
+              href={`/repositories/${repo.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Open
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        ) : (
+          onIndex && (
+            <button
+              type="button"
+              disabled={indexing || isIndexing}
+              onClick={() => onIndex(repo.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+
+              {indexing
+                ? "Starting..."
+                : isIndexing
+                  ? "Indexing..."
+                  : "Index"}
+            </button>
+          )
         )}
       </div>
     </div>
