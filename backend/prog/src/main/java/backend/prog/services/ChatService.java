@@ -52,10 +52,11 @@ public class ChatService {
             );
         }
 
-        String title = request.title() != null
-                && !request.title().isBlank()
-                ? request.title()
-                : "Chat with " + repo.getFullName();
+        String title =
+                request.title() != null &&
+                !request.title().isBlank()
+                        ? request.title().trim()
+                        : "New Chat";
 
         ChatSession session = ChatSession.builder()
                 .userId(userId)
@@ -73,7 +74,10 @@ public class ChatService {
             UUID userId,
             UUID repositoryId) {
 
-        repoService.requireOwned(repositoryId, userId);
+        repoService.requireOwned(
+                repositoryId,
+                userId
+        );
 
         return chatSessionRepository
                 .findByUserIdAndRepositoryIdOrderByCreatedAtDesc(
@@ -90,10 +94,13 @@ public class ChatService {
             UUID userId,
             UUID sessionId) {
 
-        ChatSession session = requireSession(userId, sessionId);
+        ChatSession session =
+                requireSession(userId, sessionId);
 
         return chatMessageRepository
-                .findBySessionIdOrderByCreatedAtAsc(session.getId())
+                .findBySessionIdOrderByCreatedAtAsc(
+                        session.getId()
+                )
                 .stream()
                 .map(this::toMessageResponse)
                 .toList();
@@ -105,24 +112,103 @@ public class ChatService {
             UUID sessionId) {
 
         return chatSessionRepository
-                .findByIdAndUserId(sessionId, userId)
+                .findByIdAndUserId(
+                        sessionId,
+                        userId
+                )
                 .orElseThrow(() ->
-                        new NotFoundException("Chat session not found")
+                        new NotFoundException(
+                                "Chat session not found"
+                        )
                 );
     }
+
+    /*
+     * ============================================================
+     * RENAME SESSION
+     * ============================================================
+     */
+
+    @Transactional
+    public ChatSessionResponse renameSession(
+            UUID userId,
+            UUID sessionId,
+            String title) {
+
+        ChatSession session =
+                requireSession(userId, sessionId);
+
+        String cleanedTitle =
+                title == null
+                        ? ""
+                        : title.trim();
+
+        if (cleanedTitle.isBlank()) {
+            throw new BadRequestException(
+                    "Chat title cannot be empty"
+            );
+        }
+
+        if (cleanedTitle.length() > 200) {
+            cleanedTitle =
+                    cleanedTitle.substring(0, 200);
+        }
+
+        session.setTitle(cleanedTitle);
+
+        session =
+                chatSessionRepository.save(session);
+
+        return toSessionResponse(session);
+    }
+
+    /*
+     * ============================================================
+     * DELETE SESSION
+     * ============================================================
+     */
+
+    @Transactional
+    public void deleteSession(
+            UUID userId,
+            UUID sessionId) {
+
+        ChatSession session =
+                requireSession(userId, sessionId);
+
+        /*
+         * Delete the messages first because they belong
+         * to this session.
+         */
+        chatMessageRepository.deleteBySessionId(
+                session.getId()
+        );
+
+        chatSessionRepository.delete(session);
+    }
+
+    /*
+     * ============================================================
+     * STREAM CHAT
+     * ============================================================
+     */
 
     public SseEmitter streamReply(
             UUID userId,
             UUID sessionId,
             String userContent) {
 
-        // 1. Ensure the session exists and the repository is indexed
-        ChatSession session = requireSession(userId, sessionId);
+        ChatSession session =
+                requireSession(
+                        userId,
+                        sessionId
+                );
 
-        Repository repo = repoService.requireOwned(
-                session.getRepositoryId(),
-                userId
-        );
+        Repository repo =
+                repoService.requireOwned(
+                        session.getRepositoryId(),
+                        userId
+                );
 
         if (repo.getIndexStatus() != IndexStatus.READY) {
             throw new BadRequestException(
@@ -130,32 +216,68 @@ public class ChatService {
             );
         }
 
-        // 2. Persist the user's message
-        ChatMessage userMessage = chatMessageRepository.save(
-                ChatMessage.builder()
-                        .sessionId(session.getId())
-                        .role(MessageRole.USER)
-                        .content(userContent)
-                        .build()
-        );
+        /*
+         * Automatically name a brand-new chat after
+         * the first user question.
+         */
+        boolean firstMessage =
+                chatMessageRepository
+                        .findBySessionIdOrderByCreatedAtAsc(
+                                session.getId()
+                        )
+                        .isEmpty();
 
-        // 3. RAG retrieval - find code chunks similar to the question
-        var retrievedContext = codeContextRetriever.retrieve(
-                repo.getId(),
-                userContent
-        );
+        if (
+                firstMessage &&
+                isDefaultTitle(session.getTitle())
+        ) {
+            session.setTitle(
+                    generateChatTitle(userContent)
+            );
 
-        // 4. Build Gemini prompts from retrieved context + question
-        String systemPrompt = chatPromptBuilder.systemPrompt(
-                repo.getFullName()
-        );
+            chatSessionRepository.save(session);
+        }
 
-        String userPrompt = chatPromptBuilder.userPrompt(
-                retrievedContext.contextText(),
-                userContent
-        );
+        /*
+         * Persist user's message.
+         */
+        ChatMessage userMessage =
+                chatMessageRepository.save(
+                        ChatMessage.builder()
+                                .sessionId(
+                                        session.getId()
+                                )
+                                .role(MessageRole.USER)
+                                .content(userContent)
+                                .build()
+                );
 
-        // 5. Stream Gemini response to the client using SSE
+        /*
+         * RAG retrieval.
+         */
+        var retrievedContext =
+                codeContextRetriever.retrieve(
+                        repo.getId(),
+                        userContent
+                );
+
+        /*
+         * Build prompts.
+         */
+        String systemPrompt =
+                chatPromptBuilder.systemPrompt(
+                        repo.getFullName()
+                );
+
+        String userPrompt =
+                chatPromptBuilder.userPrompt(
+                        retrievedContext.contextText(),
+                        userContent
+                );
+
+        /*
+         * Stream Gemini response.
+         */
         return chatStreamHandler.stream(
                 session.getId(),
                 toMessageResponse(userMessage),
@@ -164,6 +286,112 @@ public class ChatService {
                 userPrompt
         );
     }
+
+    /*
+     * ============================================================
+     * CHAT TITLE GENERATION
+     * ============================================================
+     */
+
+    private boolean isDefaultTitle(
+            String title) {
+
+        if (title == null) {
+            return true;
+        }
+
+        return title.equalsIgnoreCase("New Chat")
+                || title.equalsIgnoreCase("New chat");
+    }
+
+    private String generateChatTitle(
+            String content) {
+
+        if (content == null) {
+            return "New Chat";
+        }
+
+        String cleaned =
+                content.trim();
+
+        if (cleaned.isBlank()) {
+            return "New Chat";
+        }
+
+        /*
+         * Split by whitespace.
+         */
+        String[] words =
+                cleaned.split("\\s+");
+
+        StringBuilder title =
+                new StringBuilder();
+
+        int count =
+                Math.min(words.length, 2);
+
+        for (int i = 0; i < count; i++) {
+
+            String word =
+                    cleanWord(words[i]);
+
+            if (word.isBlank()) {
+                continue;
+            }
+
+            if (title.length() > 0) {
+                title.append(" ");
+            }
+
+            title.append(word);
+        }
+
+        if (title.length() == 0) {
+            return "New Chat";
+        }
+
+        String result =
+                title.toString();
+
+        if (result.length() > 200) {
+            result =
+                    result.substring(0, 200);
+        }
+
+        return result;
+    }
+
+    private String cleanWord(
+            String word) {
+
+        /*
+         * Removes punctuation from the beginning
+         * and end while keeping useful characters
+         * inside the word.
+         *
+         * Example:
+         *
+         * "What"      -> What
+         * "project?"  -> project
+         * "`Main.java`" -> Main.java
+         */
+        return word
+                .replaceAll(
+                        "^[^\\p{L}\\p{N}`]+",
+                        ""
+                )
+                .replaceAll(
+                        "[^\\p{L}\\p{N}.`]+$",
+                        ""
+                )
+                .replace("`", "");
+    }
+
+    /*
+     * ============================================================
+     * DTO MAPPING
+     * ============================================================
+     */
 
     private ChatSessionResponse toSessionResponse(
             ChatSession session) {
@@ -183,7 +411,9 @@ public class ChatService {
                 message.getId(),
                 message.getRole(),
                 message.getContent(),
-                citationMapper.fromJson(message.getCitations()),
+                citationMapper.fromJson(
+                        message.getCitations()
+                ),
                 message.getCreatedAt()
         );
     }

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import backend.prog.dto.IndexStatusResponse;
 import backend.prog.dto.RepositoryResponse;
+import backend.prog.entity.IndexStatus;
 import backend.prog.entity.Repository;
 import backend.prog.entity.User;
 import backend.prog.exceptions.NotFoundException;
@@ -23,60 +24,93 @@ import lombok.RequiredArgsConstructor;
 public class RepoService {
 
     private final RepositoryRepository repositoryRepository;
+
     private final UserService userService;
+
     private final GithubApiClient githubApiClient;
 
     @Transactional
-    public List<RepositoryResponse> syncAndListRepo(UUID userId) {
+    public List<RepositoryResponse> syncAndListRepo(
+            UUID userId
+    ) {
 
-        User user = userService.requiredById(userId);
+        User user =
+                userService.requiredById(userId);
 
-        String token = userService.decryptAccessToken(user);
+        String token =
+                userService.decryptAccessToken(user);
 
         List<Map<String, Object>> remoteRepos =
                 githubApiClient.listUserRepos(token);
 
-        List<Repository> saved = new ArrayList<>();
+        List<Repository> saved =
+                new ArrayList<>();
 
         for (Map<String, Object> remote : remoteRepos) {
 
-            Long githubRepoId = toLong(remote.get("id"));
+            Long githubRepoId =
+                    toLong(remote.get("id"));
 
-            Repository repo = repositoryRepository
-                    .findByUserIdAndGithubRepoId(userId, githubRepoId)
-                    .orElseGet(Repository::new);
+            Repository repo =
+                    repositoryRepository
+                            .findByUserIdAndGithubRepoId(
+                                    userId,
+                                    githubRepoId
+                            )
+                            .orElseGet(
+                                    Repository::new
+                            );
+
+            boolean existing =
+                    repo.getId() != null;
 
             String fullName =
-                    String.valueOf(remote.get("full_name"));
+                    String.valueOf(
+                            remote.get("full_name")
+                    );
 
-            String[] parts = fullName.split("/", 2);
+            String[] parts =
+                    fullName.split("/", 2);
 
+            /*
+             * Basic repository information
+             */
             repo.setUserId(userId);
 
-            repo.setGithubRepoId(githubRepoId);
+            repo.setGithubRepoId(
+                    githubRepoId
+            );
 
             repo.setOwner(
                     parts.length > 0
                             ? parts[0]
-                            : String.valueOf(remote.get("name"))
+                            : String.valueOf(
+                                    remote.get("name")
+                            )
             );
 
             repo.setName(
                     parts.length > 1
                             ? parts[1]
-                            : String.valueOf(remote.get("name"))
+                            : String.valueOf(
+                                    remote.get("name")
+                            )
             );
 
             repo.setFullName(fullName);
 
             repo.setPrivate(
-                    Boolean.TRUE.equals(remote.get("private"))
+                    Boolean.TRUE.equals(
+                            remote.get("private")
+                    )
             );
 
             repo.setDefaultBranch(
                     remote.get("default_branch") != null
                             ? String.valueOf(
-                                    remote.get("default_branch")
+                                    remote.get(
+                                            "default_branch"
+                                    )
                             )
                             : "main"
             );
@@ -105,12 +139,57 @@ public class RepoService {
                             : null
             );
 
-            repo.setUpdatedAt(Instant.now());
+            /*
+             * ----------------------------------------------------
+             * CHECK WHETHER THE GITHUB REPOSITORY HAS CHANGED
+             * ----------------------------------------------------
+             *
+             * New repositories already start as PENDING.
+             *
+             * Existing repositories need their current GitHub
+             * commit checked against the commit that RepoLens
+             * successfully indexed.
+             */
+            if (existing) {
 
-            if (repo.getOwner() == null
-                    || repo.getOwner().isBlank()) {
+                String currentCommitSha =
+                        githubApiClient.getBranchCommitSha(
+                                token,
+                                repo.getOwner(),
+                                repo.getName(),
+                                repo.getDefaultBranch()
+                        );
 
-                Object ownerObj = remote.get("owner");
+                checkForRepositoryChanges(
+                        repo,
+                        currentCommitSha
+                );
+            }
+
+            /*
+             * New repositories should always start as PENDING.
+             */
+            if (!existing) {
+
+                if (repo.getIndexStatus() == null) {
+                    repo.setIndexStatus(
+                            IndexStatus.PENDING
+                    );
+                }
+            }
+
+            repo.setUpdatedAt(
+                    Instant.now()
+            );
+
+            /*
+             * Fallback owner detection.
+             */
+            if (repo.getOwner() == null ||
+                    repo.getOwner().isBlank()) {
+
+                Object ownerObj =
+                        remote.get("owner");
 
                 if (ownerObj instanceof Map<?, ?> ownerMap
                         && ownerMap.get("login") != null) {
@@ -130,16 +209,101 @@ public class RepoService {
 
         return saved.stream()
                 .sorted(
-                        (a, b) -> a.getFullName()
-                                .compareToIgnoreCase(
-                                        b.getFullName()
-                                )
+                        (a, b) ->
+                                a.getFullName()
+                                        .compareToIgnoreCase(
+                                                b.getFullName()
+                                        )
                 )
                 .map(this::toResponse)
                 .toList();
     }
 
-    private static Long toLong(Object value) {
+    /**
+     * Checks whether the GitHub repository has a newer commit
+     * than the commit currently represented by the vector index.
+     */
+    private void checkForRepositoryChanges(
+            Repository repo,
+            String currentCommitSha
+    ) {
+
+        /*
+         * If GitHub did not return a SHA, do not change
+         * the current repository state.
+         */
+        if (currentCommitSha == null ||
+                currentCommitSha.isBlank()) {
+
+            return;
+        }
+
+        /*
+         * IMPORTANT:
+         *
+         * Repositories that were indexed before we introduced
+         * indexedCommitSha will have a null value.
+         *
+         * If such a repository currently says READY, we need
+         * one re-index so that RepoLens can establish the first
+         * known indexed commit.
+         */
+        if (repo.getIndexedCommitSha() == null ||
+                repo.getIndexedCommitSha().isBlank()) {
+
+            if (repo.getIndexStatus() ==
+                    IndexStatus.READY) {
+
+                repo.setIndexStatus(
+                        IndexStatus.PENDING
+                );
+
+                repo.setErrorMessage(null);
+            }
+
+            return;
+        }
+
+        /*
+         * Never interrupt an indexing operation.
+         */
+        if (repo.getIndexStatus() ==
+                IndexStatus.INDEXING) {
+
+            return;
+        }
+
+        /*
+         * GitHub has changed since the last successful
+         * indexing operation.
+         */
+        if (!currentCommitSha.equals(
+                repo.getIndexedCommitSha()
+        )) {
+
+            repo.setIndexStatus(
+                    IndexStatus.PENDING
+            );
+
+            repo.setErrorMessage(null);
+
+            /*
+             * IMPORTANT:
+             *
+             * Keep the old indexedCommitSha.
+             *
+             * It represents the version currently stored
+             * inside the vector database.
+             *
+             * IndexingService will replace it only after
+             * the new indexing operation succeeds.
+             */
+        }
+    }
+
+    private static Long toLong(
+            Object value
+    ) {
 
         if (value instanceof Number number) {
             return number.longValue();
@@ -150,7 +314,9 @@ public class RepoService {
         );
     }
 
-    public RepositoryResponse toResponse(Repository repo) {
+    public RepositoryResponse toResponse(
+            Repository repo
+    ) {
 
         return new RepositoryResponse(
                 repo.getId(),
@@ -173,7 +339,9 @@ public class RepoService {
     }
 
     @Transactional(readOnly = true)
-    public List<RepositoryResponse> listStored(UUID userId) {
+    public List<RepositoryResponse> listStored(
+            UUID userId
+    ) {
 
         return repositoryRepository
                 .findByUserIdOrderByFullNameAsc(userId)
@@ -189,11 +357,15 @@ public class RepoService {
     ) {
 
         return repositoryRepository
-                .findByIdAndUserId(repoId, userId)
+                .findByIdAndUserId(
+                        repoId,
+                        userId
+                )
                 .orElseThrow(
-                        () -> new NotFoundException(
-                                "Repository not found"
-                        )
+                        () ->
+                                new NotFoundException(
+                                        "Repository not found"
+                                )
                 );
     }
 
@@ -204,7 +376,10 @@ public class RepoService {
     ) {
 
         Repository repo =
-                requireOwned(repoId, userId);
+                requireOwned(
+                        repoId,
+                        userId
+                );
 
         return new IndexStatusResponse(
                 repo.getId(),

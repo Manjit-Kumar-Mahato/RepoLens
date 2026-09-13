@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -72,6 +71,13 @@ public class Repository {
     @Column(name = "index_status", nullable = false, length = 20)
     @Builder.Default
     private IndexStatus indexStatus = IndexStatus.PENDING;
+
+    /*
+     * Commit SHA of the GitHub branch that was last
+     * successfully indexed.
+     */
+    @Column(name = "indexed_commit_sha", length = 40)
+    private String indexedCommitSha;
 
     @Column(name = "indexed_at")
     private Instant indexedAt;

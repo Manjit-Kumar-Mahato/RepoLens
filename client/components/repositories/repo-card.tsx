@@ -102,6 +102,8 @@ export function RepoCard({
 
   const isIndexing = repo.indexStatus === "INDEXING";
   const isReady = repo.indexStatus === "READY";
+  const isPending = repo.indexStatus === "PENDING";
+  const isFailed = repo.indexStatus === "FAILED";
 
   return (
     <div className="group flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-card hover:shadow-lg">
@@ -130,18 +132,22 @@ export function RepoCard({
               ? "success"
               : isIndexing
                 ? "info"
-                : repo.indexStatus === "FAILED"
-                  ? "error"
-                  : "default"
+                : isPending
+                  ? "info"
+                  : isFailed
+                    ? "error"
+                    : "default"
           }
         >
           {isReady
             ? "Ready"
             : isIndexing
               ? "Indexing"
-              : repo.indexStatus === "FAILED"
-                ? "Failed"
-                : "Not indexed"}
+              : isPending
+                ? "Changes detected"
+                : isFailed
+                  ? "Failed"
+                  : "Not indexed"}
         </RepositoryBadge>
       </div>
 
@@ -228,7 +234,11 @@ export function RepoCard({
                 ? "Starting..."
                 : isIndexing
                   ? "Indexing..."
-                  : "Index"}
+                  : isPending
+                    ? "Re-index"
+                    : isFailed
+                      ? "Retry"
+                      : "Index"}
             </button>
           )
         )}

@@ -8,9 +8,9 @@ export default function RepositoryPage() {
   return (
     <RequireAuth>
       <AppShell hideHeader>
-        <main className="min-h-svh p-6">
+        <div className="min-h-full p-6">
           <OverviewRepository />
-        </main>
+        </div>
       </AppShell>
     </RequireAuth>
   );

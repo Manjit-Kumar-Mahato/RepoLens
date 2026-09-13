@@ -14,12 +14,15 @@ import {
 import { RepoLensIcon } from "@/components/icons/repolens-icon";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
+
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
+
 import { Button } from "@/components/ui/button";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 import {
   Sidebar,
   SidebarContent,
@@ -44,8 +48,27 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+
+type AppShellProps = {
+  children: React.ReactNode;
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  hideHeader?: boolean;
+
+  /**
+   * Normal pages:
+   *   scrollable = true
+   *
+   * Chat page:
+   *   scrollable = false
+   * because ChatView manages its own scrolling.
+   */
+  scrollable?: boolean;
+};
 
 export function AppShell({
   children,
@@ -53,13 +76,8 @@ export function AppShell({
   description,
   actions,
   hideHeader = false,
-}: {
-  children: React.ReactNode;
-  title?: string;
-  description?: string;
-  actions?: React.ReactNode;
-  hideHeader?: boolean;
-}) {
+  scrollable = true,
+}: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -67,8 +85,16 @@ export function AppShell({
   const logout = useLogout();
 
   return (
-    <SidebarProvider>
-      <Sidebar variant="inset" collapsible="icon">
+    <SidebarProvider className="h-svh min-h-0 overflow-hidden">
+      {/* =========================================================
+          MAIN APPLICATION SIDEBAR
+          This remains fixed and does NOT scroll with page content.
+         ========================================================= */}
+      <Sidebar
+        variant="inset"
+        collapsible="icon"
+        className="h-svh"
+      >
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -94,6 +120,7 @@ export function AppShell({
         </SidebarHeader>
 
         <SidebarContent>
+          {/* Workspace */}
           <SidebarGroup>
             <SidebarGroupLabel>
               Workspace
@@ -103,8 +130,12 @@ export function AppShell({
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<Link href="/dashboard" />}
-                    isActive={pathname === "/dashboard"}
+                    render={
+                      <Link href="/dashboard" />
+                    }
+                    isActive={
+                      pathname === "/dashboard"
+                    }
                     tooltip="Dashboard"
                   >
                     <LayoutDashboard />
@@ -114,8 +145,12 @@ export function AppShell({
 
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<Link href="/repositories" />}
-                    isActive={pathname.startsWith("/repositories")}
+                    render={
+                      <Link href="/repositories" />
+                    }
+                    isActive={pathname.startsWith(
+                      "/repositories"
+                    )}
                     tooltip="Repositories"
                   >
                     <FolderGit2 />
@@ -126,17 +161,22 @@ export function AppShell({
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     render={<Link href="/chat" />}
-                    isActive={pathname.startsWith("/chat")}
+                    isActive={pathname.startsWith(
+                      "/chat"
+                    )}
                     tooltip="Chat"
                   >
                     <MessageSquare />
-                    <span>Chat with your code</span>
+                    <span>
+                      Chat with your code
+                    </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
 
+          {/* Account */}
           <SidebarGroup>
             <SidebarGroupLabel>
               Account
@@ -146,8 +186,12 @@ export function AppShell({
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<Link href="/settings" />}
-                    isActive={pathname.startsWith("/settings")}
+                    render={
+                      <Link href="/settings" />
+                    }
+                    isActive={pathname.startsWith(
+                      "/settings"
+                    )}
                     tooltip="Settings"
                   >
                     <Settings />
@@ -159,6 +203,7 @@ export function AppShell({
           </SidebarGroup>
         </SidebarContent>
 
+        {/* User section stays at bottom of sidebar */}
         <SidebarFooter>
           <SidebarMenu>
             {user && (
@@ -174,7 +219,10 @@ export function AppShell({
                   >
                     <Avatar className="size-8">
                       <AvatarImage
-                        src={user.avatarUrl ?? undefined}
+                        src={
+                          user.avatarUrl ??
+                          undefined
+                        }
                         alt={
                           user.displayName ||
                           user.gitUsername
@@ -218,7 +266,9 @@ export function AppShell({
 
                       <DropdownMenuItem
                         onClick={() =>
-                          router.push("/settings")
+                          router.push(
+                            "/settings"
+                          )
                         }
                       >
                         <Settings />
@@ -226,10 +276,15 @@ export function AppShell({
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
-                        onClick={() => logout.mutate()}
-                        disabled={logout.isPending}
+                        onClick={() =>
+                          logout.mutate()
+                        }
+                        disabled={
+                          logout.isPending
+                        }
                       >
                         <LogOut />
+
                         {logout.isPending
                           ? "Logging out..."
                           : "Log out"}
@@ -243,9 +298,20 @@ export function AppShell({
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset>
+      {/* =========================================================
+          MAIN AREA
+         ========================================================= */}
+      <SidebarInset
+        className={cn(
+          "h-svh min-h-0 min-w-0",
+          scrollable
+            ? "overflow-hidden"
+            : "overflow-hidden"
+        )}
+      >
+        {/* Header */}
         {!hideHeader && (
-          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur">
+          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-1 backdrop-blur">
             <SidebarTrigger className="-ml-1" />
 
             <Separator
@@ -268,7 +334,7 @@ export function AppShell({
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pr-2">
                 {actions}
                 <ModeToggle />
               </div>
@@ -276,13 +342,29 @@ export function AppShell({
           </header>
         )}
 
-        <main className="flex-1">
+        {/* =======================================================
+            ONLY THIS AREA SCROLLS ON NORMAL PAGES.
+
+            The left Sidebar is completely independent.
+           ======================================================= */}
+        <main
+          className={cn(
+            "min-h-0 min-w-0 flex-1",
+            scrollable
+              ? "overflow-y-auto overflow-x-hidden"
+              : "overflow-hidden"
+          )}
+        >
           {children}
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
+
+/* ===============================================================
+   BRAND MARK
+   =============================================================== */
 
 export function BrandMark({
   className,
@@ -304,6 +386,10 @@ export function BrandMark({
     </div>
   );
 }
+
+/* ===============================================================
+   GHOST BUTTON LINK
+   =============================================================== */
 
 export function GhostButtonLink({
   href,

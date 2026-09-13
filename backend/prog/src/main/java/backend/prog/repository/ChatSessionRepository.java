@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import backend.prog.entity.ChatSession;
 
-public interface ChatSessionRepository extends JpaRepository<ChatSession, UUID> {
+public interface ChatSessionRepository
+        extends JpaRepository<ChatSession, UUID> {
 
     List<ChatSession> findByUserIdAndRepositoryIdOrderByCreatedAtDesc(
             UUID userId,

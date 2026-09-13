@@ -17,20 +17,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GithubApiClient {
 
-    private static final String API_BASE = "https://api.github.com";
+    private static final String API_BASE =
+            "https://api.github.com";
 
-    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_MAP =
+    private static final ParameterizedTypeReference<
+            List<Map<String, Object>>> LIST_MAP =
             new ParameterizedTypeReference<>() {
             };
 
-    private static final ParameterizedTypeReference<Map<String, Object>> MAP =
+    private static final ParameterizedTypeReference<
+            Map<String, Object>> MAP =
             new ParameterizedTypeReference<>() {
             };
 
     private final RestClient.Builder restClientBuilder;
 
     private RestClient client(String accessToken) {
-
         return restClientBuilder
                 .baseUrl(API_BASE)
                 .defaultHeader(
@@ -52,9 +54,12 @@ public class GithubApiClient {
                 .build();
     }
 
-    public List<Map<String, Object>> listUserRepos(String accessToken) {
+    public List<Map<String, Object>> listUserRepos(
+            String accessToken
+    ) {
 
-        List<Map<String, Object>> all = new ArrayList<>();
+        List<Map<String, Object>> all =
+                new ArrayList<>();
 
         int page = 1;
 
@@ -62,23 +67,34 @@ public class GithubApiClient {
 
             final int currentPage = page;
 
-            List<Map<String, Object>> pageRepos = client(accessToken)
-                    .get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/user/repos")
-                            .queryParam(
-                                    "affiliation",
-                                    "owner,collaborator,organization_member"
+            List<Map<String, Object>> pageRepos =
+                    client(accessToken)
+                            .get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/user/repos")
+                                    .queryParam(
+                                            "affiliation",
+                                            "owner,collaborator,organization_member"
+                                    )
+                                    .queryParam(
+                                            "sort",
+                                            "updated"
+                                    )
+                                    .queryParam(
+                                            "per_page",
+                                            100
+                                    )
+                                    .queryParam(
+                                            "page",
+                                            currentPage
+                                    )
+                                    .build()
                             )
-                            .queryParam("sort", "updated")
-                            .queryParam("per_page", 100)
-                            .queryParam("page", currentPage)
-                            .build()
-                    )
-                    .retrieve()
-                    .body(LIST_MAP);
+                            .retrieve()
+                            .body(LIST_MAP);
 
-            if (pageRepos == null || pageRepos.isEmpty()) {
+            if (pageRepos == null ||
+                    pageRepos.isEmpty()) {
                 break;
             }
 
@@ -94,6 +110,49 @@ public class GithubApiClient {
         return all;
     }
 
+    /*
+     * Get the current commit SHA of a branch.
+     *
+     * Example:
+     *
+     * main -> abc123...
+     */
+    public String getBranchCommitSha(
+            String accessToken,
+            String owner,
+            String repo,
+            String branch
+    ) {
+
+        Map<String, Object> body =
+                client(accessToken)
+                        .get()
+                        .uri(
+                                "/repos/{owner}/{repo}/git/ref/heads/{branch}",
+                                owner,
+                                repo,
+                                branch
+                        )
+                        .retrieve()
+                        .body(MAP);
+
+        if (body == null) {
+            return null;
+        }
+
+        Object object = body.get("object");
+
+        if (!(object instanceof Map<?, ?> objectMap)) {
+            return null;
+        }
+
+        Object sha = objectMap.get("sha");
+
+        return sha != null
+                ? String.valueOf(sha)
+                : null;
+    }
+
     public String getFileContent(
             String accessToken,
             String owner,
@@ -101,16 +160,17 @@ public class GithubApiClient {
             String path
     ) {
 
-        Map<String, Object> body = client(accessToken)
-                .get()
-                .uri(
-                        "/repos/{owner}/{repo}/contents/{path}",
-                        owner,
-                        repo,
-                        path
-                )
-                .retrieve()
-                .body(MAP);
+        Map<String, Object> body =
+                client(accessToken)
+                        .get()
+                        .uri(
+                                "/repos/{owner}/{repo}/contents/{path}",
+                                owner,
+                                repo,
+                                path
+                        )
+                        .retrieve()
+                        .body(MAP);
 
         if (body == null) {
             return null;
@@ -125,8 +185,9 @@ public class GithubApiClient {
 
         if ("base64".equals(String.valueOf(encoding))) {
 
-            String raw = String.valueOf(content)
-                    .replaceAll("\\s", "");
+            String raw =
+                    String.valueOf(content)
+                            .replaceAll("\\s", "");
 
             return new String(
                     Base64.getDecoder().decode(raw),

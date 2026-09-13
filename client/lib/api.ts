@@ -5,11 +5,11 @@ export type IndexStatus =
   | "FAILED";
 
 export type User = {
-    id: string;
-    gitId: number;
-    gitUsername: string;
-    displayName : string;
-    avatarUrl : string | null;
+  id: string;
+  gitId: number;
+  gitUsername: string;
+  displayName: string;
+  avatarUrl: string | null;
 };
 
 export type Repository = {
@@ -41,29 +41,68 @@ export type IndexStatusResponse = {
   errorMessage: string | null;
 };
 
-export function getApiBaseUrl(){
-    return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+export type Citation = {
+  filePath: string;
+  startLine: number | null;
+  endLine: number | null;
+  language: string | null;
+};
+
+export type ChatSession = {
+  id: string;
+  repositoryId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "USER" | "ASSISTANT";
+  content: string;
+  citations: Citation[];
+  createdAt: string;
+};
+
+export function getApiBaseUrl() {
+  return (
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    "http://localhost:8080"
+  );
 }
 
 export class ApiError extends Error {
   status: number;
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string
+  ) {
     super(message);
     this.status = status;
   }
 }
 
-export function getGithubLoginUrl(){
-    return `${getApiBaseUrl()}/oauth2/authorization/github`;
+export function getGithubLoginUrl() {
+  return `${getApiBaseUrl()}/oauth2/authorization/github`;
 }
 
-async function parseError(res: Response): Promise<string> {
+async function parseError(
+  res: Response
+): Promise<string> {
   try {
     const data = await res.json();
-    return data.message ?? data.error ?? res.statusText;
+
+    return (
+      data.message ??
+      data.error ??
+      res.statusText
+    );
   } catch {
-    return res.statusText || "Request failed";
+    return (
+      res.statusText ||
+      "Request failed"
+    );
   }
 }
 
@@ -71,17 +110,24 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const res = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  const res = await fetch(
+    `${getApiBaseUrl()}${path}`,
+    {
+      ...init,
+      credentials: "include",
+      headers: {
+        "Content-Type":
+          "application/json",
+        ...(init?.headers ?? {}),
+      },
+    }
+  );
 
   if (!res.ok) {
-    throw new ApiError(res.status, await parseError(res));
+    throw new ApiError(
+      res.status,
+      await parseError(res)
+    );
   }
 
   if (res.status === 204) {
@@ -92,18 +138,122 @@ export async function apiFetch<T>(
 }
 
 export const api = {
-  me: () => apiFetch<User>("/api/auth/me"),
-  logout: () =>
-    apiFetch<void>("/api/auth/logout", {
-      method: "POST",
-    }),
+  /* ============================================================
+     AUTH
+     ============================================================ */
 
-  listRepos: (refresh = true) =>
-    apiFetch<Repository[]>(`/api/repos?refresh=${refresh}`),
-  getRepo: (id: string) =>
-      apiFetch<Repository>(`/api/repos/${id}`),
-  startIndex: (id: string) =>
-      apiFetch<void>(`/api/repos/${id}/index`, { method: "POST" }),
-  indexStatus: (id: string) =>
-      apiFetch<IndexStatusResponse>(`/api/repos/${id}/status`),
+  me: () =>
+    apiFetch<User>(
+      "/api/auth/me"
+    ),
+
+  logout: () =>
+    apiFetch<void>(
+      "/api/auth/logout",
+      {
+        method: "POST",
+      }
+    ),
+
+  /* ============================================================
+     REPOSITORIES
+     ============================================================ */
+
+  listRepos: (
+    refresh = true
+  ) =>
+    apiFetch<Repository[]>(
+      `/api/repos?refresh=${refresh}`
+    ),
+
+  getRepo: (
+    id: string
+  ) =>
+    apiFetch<Repository>(
+      `/api/repos/${id}`
+    ),
+
+  startIndex: (
+    id: string
+  ) =>
+    apiFetch<void>(
+      `/api/repos/${id}/index`,
+      {
+        method: "POST",
+      }
+    ),
+
+  indexStatus: (
+    id: string
+  ) =>
+    apiFetch<IndexStatusResponse>(
+      `/api/repos/${id}/status`
+    ),
+
+  /* ============================================================
+     CHAT SESSIONS
+     ============================================================ */
+
+  createSession: (
+    repositoryId: string,
+    title?: string
+  ) =>
+    apiFetch<ChatSession>(
+      "/api/chat/sessions",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          repositoryId,
+          title:
+            title?.trim() ||
+            "New Chat",
+        }),
+      }
+    ),
+
+  listSessions: (
+    repositoryId: string
+  ) =>
+    apiFetch<ChatSession[]>(
+      `/api/chat/sessions?repositoryId=${encodeURIComponent(
+        repositoryId
+      )}`
+    ),
+
+  getMessages: (
+    sessionId: string
+  ) =>
+    apiFetch<ChatMessage[]>(
+      `/api/chat/sessions/${encodeURIComponent(
+        sessionId
+      )}`
+    ),
+
+  renameSession: (
+    sessionId: string,
+    title: string
+  ) =>
+    apiFetch<ChatSession>(
+      `/api/chat/sessions/${encodeURIComponent(
+        sessionId
+      )}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          title,
+        }),
+      }
+    ),
+
+  deleteSession: (
+    sessionId: string
+  ) =>
+    apiFetch<void>(
+      `/api/chat/sessions/${encodeURIComponent(
+        sessionId
+      )}`,
+      {
+        method: "DELETE",
+      }
+    ),
 };
