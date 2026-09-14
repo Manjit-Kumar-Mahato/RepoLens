@@ -8,7 +8,9 @@ type RepoStatusProps = {
   repo: Repository;
 };
 
-export function RepoStatus({ repo }: RepoStatusProps) {
+export function RepoStatus({
+  repo,
+}: RepoStatusProps) {
   const progress = getRepoProgress(repo);
 
   let variant:
@@ -18,7 +20,7 @@ export function RepoStatus({ repo }: RepoStatusProps) {
     | "error"
     | "info" = "default";
 
-  let label: string = repo.indexStatus;
+  let label = "New";
 
   switch (repo.indexStatus) {
     case "INDEXING":
@@ -38,14 +40,15 @@ export function RepoStatus({ repo }: RepoStatusProps) {
 
     case "PENDING":
       variant = "warning";
-      label = "New";
+      label = "Changes detected";
       break;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
+
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           Status
         </span>
 
@@ -55,16 +58,19 @@ export function RepoStatus({ repo }: RepoStatusProps) {
       </div>
 
       {repo.indexStatus === "INDEXING" && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {repo.filesProcessed} / {repo.filesTotal} files
+        <div className="space-y-3">
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              Indexing progress
             </span>
 
-            <span>{progress}%</span>
+            <span className="font-medium">
+              {progress}%
+            </span>
           </div>
 
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all duration-500"
               style={{
@@ -72,21 +78,53 @@ export function RepoStatus({ repo }: RepoStatusProps) {
               }}
             />
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            {repo.filesProcessed} of{" "}
+            {repo.filesTotal} files processed
+          </p>
         </div>
       )}
 
       {repo.indexStatus === "READY" && (
-        <p className="text-xs text-muted-foreground">
-          {repo.filesTotal} files · {repo.chunkCount} chunks
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Your repository is indexed and ready for AI
+            conversations.
+          </p>
+
+          <p className="text-xs text-muted-foreground">
+            {repo.filesTotal} files · {repo.chunkCount} chunks
+          </p>
+        </div>
       )}
 
-      {repo.indexStatus === "FAILED" &&
-        repo.errorMessage && (
-          <p className="line-clamp-2 text-xs text-red-400">
-            {repo.errorMessage}
+      {repo.indexStatus === "PENDING" && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Changes have been detected in the GitHub repository.
           </p>
-        )}
+
+          <p className="text-xs text-muted-foreground">
+            Re-index the repository to update the AI knowledge base.
+          </p>
+        </div>
+      )}
+
+      {repo.indexStatus === "FAILED" && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Indexing failed for this repository.
+          </p>
+
+          {repo.errorMessage && (
+            <p className="line-clamp-3 text-xs text-red-400">
+              {repo.errorMessage}
+            </p>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }

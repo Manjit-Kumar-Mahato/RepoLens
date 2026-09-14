@@ -1,4 +1,5 @@
 # Environment variables
+configurator.env
 .env
 .env.*
 !.env.example

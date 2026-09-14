@@ -314,10 +314,7 @@ public class RepoService {
         );
     }
 
-    public RepositoryResponse toResponse(
-            Repository repo
-    ) {
-
+    public RepositoryResponse toResponse(Repository repo){
         return new RepositoryResponse(
                 repo.getId(),
                 repo.getGithubRepoId(),
@@ -330,13 +327,13 @@ public class RepoService {
                 repo.getHtmlUrl(),
                 repo.getDescription(),
                 repo.getIndexStatus(),
+                repo.getIndexedCommitSha(),
                 repo.getIndexedAt(),
                 repo.getChunkCount(),
                 repo.getFilesTotal(),
                 repo.getFilesProcessed(),
-                repo.getErrorMessage()
-        );
-    }
+                repo.getErrorMessage());
+        }
 
     @Transactional(readOnly = true)
     public List<RepositoryResponse> listStored(

@@ -24,6 +24,7 @@ export type Repository = {
   htmlUrl: string | null;
   description: string | null;
   indexStatus: IndexStatus;
+  indexedCommitSha: string | null;
   indexedAt: string | null;
   chunkCount: number;
   filesTotal: number;
