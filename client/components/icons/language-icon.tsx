@@ -1,14 +1,15 @@
 "use client";
 
 import type { IconType } from "react-icons";
+
 import {
   SiAssemblyscript,
   SiC,
   SiClojure,
   SiCplusplus,
-  SiCsharp,
+  SiSharp,
   SiCrystal,
-  SiCss3,
+  SiCss,
   SiD,
   SiDart,
   SiElixir,
@@ -17,10 +18,8 @@ import {
   SiFortran,
   SiGo,
   SiGnubash,
-  SiGroovy,
   SiHaskell,
   SiHtml5,
-  SiJava,
   SiJavascript,
   SiJson,
   SiJulia,
@@ -28,11 +27,10 @@ import {
   SiLua,
   SiMarkdown,
   SiNim,
-  SiNix,
-  SiObjectivec,
+  SiNx,
   SiPerl,
   SiPhp,
-  SiPowershell,
+  SiPowers,
   SiPython,
   SiR,
   SiRuby,
@@ -48,6 +46,11 @@ import {
   SiYaml,
   SiZig,
 } from "react-icons/si";
+
+import {
+  FaCode,
+  FaJava,
+} from "react-icons/fa6";
 
 import { cn } from "@/lib/utils";
 
@@ -91,7 +94,7 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   // ─────────────────────────────────────────────
 
   java: {
-    Icon: SiJava,
+    Icon: FaJava,
     bg: "bg-[#ED8B00]",
     iconClass: "text-white",
   },
@@ -109,7 +112,7 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   },
 
   groovy: {
-    Icon: SiGroovy,
+    Icon: FaCode,
     bg: "bg-[#4298B8]",
     iconClass: "text-white",
   },
@@ -171,31 +174,31 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   },
 
   "c#": {
-    Icon: SiCsharp,
+    Icon: SiSharp,
     bg: "bg-[#512BD4]",
     iconClass: "text-white",
   },
 
   csharp: {
-    Icon: SiCsharp,
+    Icon: SiSharp,
     bg: "bg-[#512BD4]",
     iconClass: "text-white",
   },
 
   cs: {
-    Icon: SiCsharp,
+    Icon: SiSharp,
     bg: "bg-[#512BD4]",
     iconClass: "text-white",
   },
 
   objectivec: {
-    Icon: SiObjectivec,
+    Icon: FaCode,
     bg: "bg-[#438EFF]",
     iconClass: "text-white",
   },
 
   "objective-c": {
-    Icon: SiObjectivec,
+    Icon: FaCode,
     bg: "bg-[#438EFF]",
     iconClass: "text-white",
   },
@@ -333,13 +336,13 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   },
 
   powershell: {
-    Icon: SiPowershell,
+    Icon: SiPowers,
     bg: "bg-[#5391FE]",
     iconClass: "text-white",
   },
 
   ps1: {
-    Icon: SiPowershell,
+    Icon: SiPowers,
     bg: "bg-[#5391FE]",
     iconClass: "text-white",
   },
@@ -361,19 +364,19 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   },
 
   css: {
-    Icon: SiCss3,
+    Icon: SiCss,
     bg: "bg-[#1572B6]",
     iconClass: "text-white",
   },
 
   sass: {
-    Icon: SiCss3,
+    Icon: SiCss,
     bg: "bg-[#CC6699]",
     iconClass: "text-white",
   },
 
   scss: {
-    Icon: SiCss3,
+    Icon: SiCss,
     bg: "bg-[#CC6699]",
     iconClass: "text-white",
   },
@@ -431,7 +434,7 @@ const LANGUAGE_MAP: Record<string, LanguageConfig> = {
   },
 
   nix: {
-    Icon: SiNix,
+    Icon: SiNx,
     bg: "bg-[#5277C3]",
     iconClass: "text-white",
   },
@@ -509,7 +512,7 @@ function normalizeLanguage(language?: string | null) {
   return language
     .trim()
     .toLowerCase()
-    .replace(/\.language$/, "");
+    .replace(/\.\w+$/, "");
 }
 
 export function getLanguageConfig(
